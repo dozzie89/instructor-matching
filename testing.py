@@ -26,3 +26,6 @@ df_classes['capacity_tier'] = np.select(conditions, ['0', '1', '2'])
 
 print(df_classes[['Max Capacity', 'capacity_tier']].head())
 print(high, middle, low)
+
+class_sizes.sort()
+print(class_sizes)

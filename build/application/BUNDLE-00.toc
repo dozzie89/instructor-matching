@@ -1,0 +1,3 @@
+([('application',
+   '/Users/dozzie89/Desktop/programming-project/dist/application',
+   'EXECUTABLE')],)
