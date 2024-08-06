@@ -1,4 +1,4 @@
-#!/Users/dozzie89/Desktop/programming-project/venv/bin/python3
+#!/Users/dozzie89/Desktop/programming-project/venv/bin/python3.11
 # -*- coding: utf-8 -*-
 import re
 import sys

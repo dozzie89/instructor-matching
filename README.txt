@@ -24,14 +24,6 @@ Course Scheduling File (list of instructors' classes):
     Bldg
     Room
 
-Faculty Information File (extra information about faculty):
-    Employee ID
-    Full Title
-    Job Family
-    Department
-    Full Name
-    Email - Primary Work or Primary Home
-
 Faculty Scheduling File (extra availability info about faculty):
     PRIMARY_INSTR_ID
     Monday
