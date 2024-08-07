@@ -2,12 +2,38 @@ from tkinter import *
 from tkinter import ttk
 from tkinter.filedialog import askopenfilename, asksaveasfile
 
-import numpy as np
 import pandas as pd
 import networkx as nx
 
 #TODO: re-match professors in bad pairs
-# GPGN, PHGN, HASS, EBGN, CS, materials
+#TODO: only check first 75 minutes
+
+#extracted columns from class file
+col_class_id = 'Response ID'
+col_class_begin = 'Course_Begin_24'
+col_class_end = 'Course_End_24'
+col_class_m = 'Course_Day_M'
+col_class_t = 'Course_Day_T'
+col_class_w = 'Course_Day_W'
+col_class_r = 'Course_Day_R'
+col_class_f = 'Course_Day_F'
+col_class_prof_dept = 'Department'
+col_class_enrl = 'Enrollment'
+col_class_role = 'Role'
+col_class_email = 'Email'
+col_class_name = 'Name'
+col_class_class_dept = 'Course_Dept'
+col_class_num = 'Course_Number'
+
+#extracted columns from scheduling file
+col_schedule_id = 'Response ID'
+col_schedule_begin = 'Begin Time'
+col_schedule_end = 'End Time'
+col_schedule_m = 'Monday'
+col_schedule_t = 'Tuesday'
+col_schedule_w = 'Wednesday'
+col_schedule_r = 'Thursday'
+col_schedule_f = 'Friday'
 
 #initialize lists for taking in information
 inst_bad = []
@@ -30,11 +56,11 @@ def get_file_classes():
 
         file_name = askopenfilename(filetypes=[("Excel Files", "*.xlsx"), ("All Files", "*.*")])
         df_classes = pd.read_excel(file_name)
-        df_classes = df_classes[pd.notnull(df_classes['Response ID'])]
-        df_classes = df_classes[pd.notnull(df_classes['Begin Time'])]
-        df_classes = df_classes[pd.notnull(df_classes['End Time'])]
+        df_classes = df_classes[pd.notnull(df_classes[col_class_id])]
+        df_classes = df_classes[pd.notnull(df_classes[col_class_begin])]
+        df_classes = df_classes[pd.notnull(df_classes[col_class_end])]
 
-        instructors = set(df_classes['Response ID'].sort_values().unique())
+        instructors = set(df_classes[col_class_id].sort_values().unique())
     except Exception as e:
         raise(e)
     #lbl_print["text"] = f"{file_name} loaded successfully."
@@ -55,17 +81,15 @@ def get_file_scheduling():
     
 
 
-def get_timeline(instructor, conf, class_code=None):
+def get_timeline(instructor, conf):
     #convert instructor's availabilities into a list of times for graph matching
     global df_classes
     global df_scheduling
     all_classes = set()
-    if class_code:
-        classes = df_classes[df_classes['Response ID'] == instructor][df_classes['CRN'] == class_code][['Begin Time', 'End Time', 'M', 'T', 'W', 'R', 'F']].values.tolist()
-    else:
-        classes = df_classes[df_classes['Response ID'] == instructor][['Begin Time', 'End Time', 'M', 'T', 'W', 'R', 'F']].values.tolist()
+    classes = df_classes[df_classes[col_class_id] == instructor][[col_class_begin, col_class_end, col_class_m, col_class_t, col_class_w, col_class_r, col_class_f]].values.tolist()
+    
     if conf and not df_scheduling.empty:
-        conflicts = df_scheduling[df_scheduling['PRIMARY_INSTRUCTOR_ID'] == instructor][['Begin Time', 'End Time', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']].values.tolist()
+        conflicts = df_scheduling[df_scheduling[col_schedule_id] == instructor][[col_schedule_begin, col_schedule_end, col_schedule_m, col_schedule_t, col_schedule_w, col_schedule_r, col_schedule_f]].values.tolist()
         classes.extend(conflicts)
     for class_time in classes:
         for i in range(2, 7):
@@ -84,7 +108,6 @@ def generate_edges():
         inst_set.add(float(inst1))
         inst_set.add(float(inst2))
 
-    #TODO: make more efficient?
     #convert instructors, classes to edges in a graph by comparing classes with conflicts
     for instruct_outer in instructors:
         if instruct_outer in inst_set: continue
@@ -92,43 +115,43 @@ def generate_edges():
         lbl_print["text"] = "Loading...number of possible matches generated: {:.2f}".format(len(edges))
         root.update()
 
-        class_set = df_classes[df_classes['Response ID'] == instruct_outer][['CRN']].values.tolist()
+        outer_timeline = get_timeline(instruct_outer, False)
 
-        for outer_class in class_set:
-            outer_timeline = get_timeline(instruct_outer, False, outer_class[0])
+        for instruct_inner in instructors:
+            if instruct_inner in inst_set or ((instruct_outer, instruct_inner) in inst_bad) or ((instruct_inner, instruct_outer) in inst_bad): continue
+            inner_timeline = get_timeline(instruct_inner, True)
 
-            for instruct_inner in instructors:
-                if instruct_inner in inst_set or ((instruct_outer, instruct_inner) in inst_bad) or ((instruct_inner, instruct_outer) in inst_bad): continue
-                inner_timeline = get_timeline(instruct_inner, True)
+            c_add = True
 
-                c_add = True
-
-                for o_class in outer_timeline:
-                    for i_conflict in inner_timeline:
-                        if not (i_conflict[0] >= o_class[1] or i_conflict[1] <= o_class[0]):
-                            c_add = False
-                            break
-                    
-                    if c_add: 
-                        edges.add((instruct_inner, instruct_outer, outer_class[0]))
+            for o_class in outer_timeline:
+                for i_conflict in inner_timeline:
+                    if not (i_conflict[0] >= o_class[1] or i_conflict[1] <= o_class[0]):
+                        c_add = False
                         break
-
-    #now we have one-way edges, so convert to two-way (checking both classes)
-    final_edge_set = list()
-    for edge in edges:
-        u, v, class_code = edge
-        #for each edge, find every edge with the reversed nodes and add to final list
-        for (v_flip, u_flip, crn_flip) in [(n1, n2, crn) for (n1, n2, crn) in edges if (n1 == v and n2 == u)]:
-            final_edge_set.append((u, v, class_code, crn_flip))
+                
+                if c_add: 
+                    edges.add((instruct_inner, instruct_outer))
+                    break
 
     lbl_print["text"] = "Successfully generated edges."
-    return final_edge_set
+    return edges
 
 
 def generate_graph(nodes, edges):
+    try:
+        D = nx.DiGraph()
+        D.add_nodes_from(nodes)
+        D.add_edges_from(edges)
 
-    #TODO: find better algorithm? this is a greedy algorithm, from what I can tell. implement hungarian maximum matching?
-    #TODO: weighted graph?
+        G = D.to_undirected(reciprocal=True)
+        #if(input("Would you like a drawing of all possible pairings of these instructors? (y/n). ").lower() == 'y'):
+            #nx.draw(G)
+            #plt.savefig('output.png')
+            #print("Successfully saved graph to output.png.")
+    except Exception as e:
+        lbl_print["text"] = "Error with graph process: {}".format(e)
+        raise e
+
     try:
         #pairs = nx.maximal_matching(G)
         #outline taken from networkx maximal_matching function
@@ -139,52 +162,22 @@ def generate_graph(nodes, edges):
         same_dep = []
         diff_dep = []
 
-        node_degrees = {}
+        for edge in G.edges:
+            u,v = edge
 
-        #TODO: bad.
-        for edge in edges:
-            u,v,u_class,v_class = edge
-
-            if (u in node_degrees):
-                node_degrees[u] += 1
-            else:
-                node_degrees.update({u: 1})
-            if (v in node_degrees):
-                node_degrees[v] += 1
-            else:
-                node_degrees.update({v: 1})
-
-            if df_classes[df_classes['Response ID'] == u]['Department'].values[0] == df_classes[df_classes['Response ID'] == v]['Department'].values[0]:
+            if df_classes[df_classes[col_class_id] == u][col_class_class_dept].values[0] == df_classes[df_classes[col_class_id] == v][col_class_class_dept].values[0]:
                 same_dep.append(edge)
             else:
                 diff_dep.append(edge)
 
-        #TODO: 3 or 4 buckets? what are the values?
-        (low, high) = (30, 50)
-
         def class_size_check(edge):
-            u,v,u_class,v_class = edge
-            u_size = df_classes[df_classes['CRN'] == u_class]['Max Capacity'].values[0]
-            v_size = df_classes[df_classes['CRN'] == v_class]['Max Capacity'].values[0]
+            u,v = edge
+            u_size = df_classes[df_classes[col_class_id] == u][col_class_enrl].values[0]
+            v_size = df_classes[df_classes[col_class_id] == v][col_class_enrl].values[0]
 
-            if u_size <= low:
-                if v_size <= low:
-                    return True
-                else:
-                    return False
-            elif u_size <= high:
-                if v_size > low and v_size <= high:
-                    return True
-                else:
-                    return False
-            else:
-                if v_size > high:
-                    return True
-                else:
-                    return False
+            return u_size == v_size
             #return true if same class size
             #return false otherwise
-            return
 
         edge_lists = [[], [], [], []]
         #0 = diff dep, same size
@@ -204,24 +197,24 @@ def generate_graph(nodes, edges):
                 edge_lists[3].append(edge)
         
         def sort_func(edge):
-            degree1 = node_degrees[edge[0]]
-            degree2 = node_degrees[edge[1]]
+            degree1 = G.degree(edge[0])
+            degree2 = G.degree(edge[1])
             return degree1 + degree2
 
         for edge_list in edge_lists:
             edge_list = sorted(edge_list, key=sort_func, reverse=False)
             for edge in edge_list:
-                u, v, u_class, u_size = edge
                 if u not in nodes and v not in nodes and u != v:
                     pairs.add(edge)
                     nodes.add(u)
                     nodes.add(v)
+            print(pairs)
 
     except Exception as e:
         lbl_print["text"] = "Error with matching process: {}".format(e)
         raise e
 
-    #TODO: reimplement correctly
+    #TODO: reimplement correctly if needed
     #for (inst1, inst2) in inst_good:
     #    pairs.add((float(inst1), float(inst2)))
 
@@ -232,7 +225,7 @@ def generate_graph(nodes, edges):
 
 def get_name(id):
     global df_classes
-    return (df_classes[df_classes['Response ID'] == id]['Name'].values[0])
+    return (df_classes[df_classes[col_class_id] == id][col_class_name].values[0])
 
 
 
@@ -241,31 +234,28 @@ def output_pairs(pairs):
     global output_df_download
     global pairs_download
 
-    df_class_output = df_classes[['Begin Time', 'End Time', 'M', 'T', 'W', 'R', 'F', 'Response ID', 'Subj', 'Crse', 'Bldg', 'Room', 'CRN']]
+    df_class_output = df_classes[[col_class_begin, col_class_end, col_class_m, col_class_t, col_class_w, col_class_r, col_class_f, col_class_id, col_class_class_dept, col_class_num]]
 
     def df_apply(time):
-        cls_str = time[8] + time[9] + ' '
+        cls_str = time[8] + str(time[9]) + ' '
         cls_str = cls_str + str(int(time[0])) + '-' + str(int(time[1])) + ' '
         for i in range(2, 7):
             if not pd.isna(time[i]):
                 cls_str = cls_str + time[i]
-        cls_str = cls_str + ' ' + time[10] + time[11]
         return cls_str
     
     data = [(
-        pair[0],
         get_name(pair[0]),
-        df_classes[df_classes['Response ID'] == pair[0]]['Department'].values[0],
-        df_classes[df_classes['Response ID'] == pair[0]]['Role'].values[0],
-        df_classes[df_classes['Response ID'] == pair[0]]['Email'].values[0],
-        [df_apply(time) for time in df_class_output[df_class_output['Response ID'] == pair[0]][df_class_output['CRN'] == pair[3]].values.tolist()],
+        df_classes[df_classes[col_class_id] == pair[0]][col_class_class_dept].values[0],
+        df_classes[df_classes[col_class_id] == pair[0]][col_class_role].values[0],
+        df_classes[df_classes[col_class_id] == pair[0]][col_class_email].values[0],
+        [df_apply(time) for time in df_class_output[df_class_output[col_class_id] == pair[0]].values.tolist()],
 
-        pair[1],
         get_name(pair[1]),
-        df_classes[df_classes['Response ID'] == pair[1]]['Department'].values[0],
-        df_classes[df_classes['Response ID'] == pair[1]]['Role'].values[0],
-        df_classes[df_classes['Response ID'] == pair[1]]['Email'].values[0],
-        [df_apply(time) for time in df_class_output[df_class_output['Response ID'] == pair[1]][df_class_output['CRN'] == pair[2]].values.tolist()],
+        df_classes[df_classes[col_class_id] == pair[1]][col_class_class_dept].values[0],
+        df_classes[df_classes[col_class_id] == pair[1]][col_class_role].values[0],
+        df_classes[df_classes[col_class_id] == pair[1]][col_class_email].values[0],
+        [df_apply(time) for time in df_class_output[df_class_output[col_class_id] == pair[1]].values.tolist()],
     ) for pair in pairs]
         
     pairs_download = pairs
@@ -279,17 +269,17 @@ def output_pairs(pairs):
     if diff: 
         text_var = "Unpaired Instructors: " + ' '.join([get_name(inst) for inst in diff])
         for inst in diff:
-            data.append((inst, get_name(inst), 
-            df_classes[df_classes['Response ID'] == inst]['Department'].values[0], 
-            df_classes[df_classes['Response ID'] == inst]['Role'].values[0], 
-            df_classes[df_classes['Response ID'] == inst]['Email'].values[0],
-            [df_apply(time) for time in df_class_output[df_class_output['Response ID'] == pair[1]][df_class_output['CRN'] == pair[2]].values.tolist()], 
-            0, "Unpaired", 0, 0, 0, 0, 0))
+            data.append((get_name(inst), 
+            df_classes[df_classes[col_class_id] == inst][col_class_class_dept].values[0], 
+            df_classes[df_classes[col_class_id] == inst][col_class_role].values[0], 
+            df_classes[df_classes[col_class_id] == inst][col_class_email].values[0],
+            [df_apply(time) for time in df_class_output[df_class_output[col_class_id] == pair[1]].values.tolist()], 
+            "Unpaired", 0, 0, 0, 0))
     else:
         text_var = "Unpaired Instructors: None"
     lbl_print["text"] = text_var
 
-    output_df_download = pd.DataFrame(data, columns=['inst1_id', 'inst1_name', 'inst1_dep', 'inst1_job', 'inst1_role', 'inst1_email', 'inst1_class', 'inst2_id', 'inst2_name', 'inst2_dep', 'inst2_job', 'inst2_role', 'inst2_email', 'inst2_class'], )
+    output_df_download = pd.DataFrame(data, columns=['inst1_name', 'inst1_dep', 'inst1_job', 'inst1_email', 'inst1_class', 'inst2_name', 'inst2_dep', 'inst2_job', 'inst2_email', 'inst2_class'], )
 
 
 
@@ -300,39 +290,6 @@ def go_func():
     edges = generate_edges()
     pairs = generate_graph(instructors, edges)
     output_pairs(pairs)
-
-
-
-def type_manager():
-    if not check_func(): return
-    global df_classes
-
-    t = Toplevel(root)
-    ttk.Label(master=t, text="Which class types would you like to include?").pack()
-
-    checks = set()
-
-    for type in df_classes['SCHEDULE_DESC'].sort_values().unique():
-        check = ttk.Checkbutton(t, text=type)
-        checks.add(check)
-        check.pack()
-        check.invoke()
-        check.invoke()
-
-    def type_manager_helper():
-        global df_classes
-        global instructors
-        true_set = set()
-        for check in checks:
-            if check.instate(['selected']):
-                true_set.add(check['text'])
-        df_classes = df_classes[df_classes['SCHEDULE_DESC'].isin(true_set)]
-        instructors = set(df_classes['Response ID'].sort_values().unique())
-        lbl_print['text'] = "Successfully recieved class types."
-        t.destroy()
-    
-    ttk.Button(master=t, text="Back", command=t.destroy).pack(side='left')
-    ttk.Button(master=t, text="Submit", command=type_manager_helper).pack(side='right')
 
 
 
@@ -347,8 +304,7 @@ def dep_manager():
 
     checks = set()
 
-    for dep in df_classes['Department'].sort_values().unique():
-    #for dep in df['Subj'].sort_values().unique():
+    for dep in df_classes[col_class_class_dept].sort_values().unique():
         check = ttk.Checkbutton(t, text=dep)
         checks.add(check)
         check.pack()
@@ -363,10 +319,9 @@ def dep_manager():
         for check in checks:
             if check.instate(['selected']):
                 true_set.add(check['text'])
-        #df = df[df['Subj'].isin(true_set)]
-        df_classes = df_classes[df_classes['Department'].isin(true_set)]
-        df_classes = df_classes[df_classes['Response ID'].isin(df_classes['Response ID'].sort_values().unique())]
-        instructors = set(df_classes['Response ID'].sort_values().unique())
+        df_classes = df_classes[df_classes[col_class_class_dept].isin(true_set)]
+        df_classes = df_classes[df_classes[col_class_id].isin(df_classes[col_class_id].sort_values().unique())]
+        instructors = set(df_classes[col_class_id].sort_values().unique())
         lbl_print['text'] = "Successfully recieved departments."
         t.destroy()
 
@@ -405,7 +360,7 @@ def download_dep():
     dep = StringVar()
     radios = set()
 
-    for department in df_classes['Department'].sort_values().unique():
+    for department in df_classes[col_class_class_dept].sort_values().unique():
         radio = ttk.Radiobutton(t, text=department, variable=dep, value=department)
         radios.add(radio)
         radio.pack()
@@ -442,10 +397,6 @@ def check_func():
     
     return True
 
-def info_manager():
-    type_manager()
-    #TODO: select deps, class types, prof. types?
-
 def download_manager():
     go_func()
     download()
@@ -471,13 +422,8 @@ ttk.Separator(root, orient=VERTICAL).pack(fill='x', expand=True)
 input_frame = ttk.Frame(root)
 input_frame.pack()
 
-ttk.Button(input_frame, text="Select Information", command=info_manager).pack(fill='x', side='left')
-#ttk.Button(input_frame, text="Input Class Types", command=type_manager).pack(fill='x', side='left')
-#ttk.Button(input_frame, text="Input Departments", command=dep_manager).pack(side='left')
-#ttk.Button(input_frame, text="Input Extra Info", command=get_info).pack(side='left')
+ttk.Button(input_frame, text="Select Information", command=dep_manager).pack(fill='x', side='left')
 
-#pairs_frame = ttk.Frame(root)
-#pairs_frame.pack()
 ttk.Button(input_frame, text="Generate/Download Pairs", command=download_manager).pack(side='left')
 #ttk.Button(pairs_frame, text="Generate Pairs", command=go_func).pack(fill='x', side='left')
 #ttk.Button(input_frame, text="Download Pairs", command=download).pack(side='left')

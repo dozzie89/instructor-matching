@@ -7,25 +7,28 @@ python3 application.py
 
 Necessary columns:
 
-Course Scheduling File (list of instructors' classes):
-    Not Participating
-    PRIMARY_INSTR_ID
-    CRN
-    Begin Time
-    End Time
-    M
-    T
-    W
-    R
-    F
-    SCHEDULE_DESC
-    Subj
-    Crse
-    Bldg
-    Room
+Course Scheduling File (list of instructors' preferred classes):
+    Response ID
+    Name
+    Email
+    Department
+    Role
+    Course_Dept
+    Course_Number
+    Course_Day_M
+    Course_Day_T
+    Course_Day_W
+    Course_Day_R
+    Course_Day_F
+    Course_Begin_24
+    Course_End_24
+    Enrollment
+
+    note: enrollment should be a categorical variable based on the number of buckets of different class sizes
+    e.g. either "Under 30", "30-50", "Over 50". as long as it is categorical and consistent, it should work!
 
 Faculty Scheduling File (extra availability info about faculty):
-    PRIMARY_INSTR_ID
+    Response ID
     Monday
     Tuesday
     Wednesday
