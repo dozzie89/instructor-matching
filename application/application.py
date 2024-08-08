@@ -25,6 +25,9 @@ col_class_name = 'Name'
 col_class_class_dept = 'Course_Dept'
 col_class_num = 'Course_Number'
 
+col_class_beg12 = 'Course_Begin Time'
+col_class_end12 = 'Course_End Time'
+
 #extracted columns from scheduling file
 col_schedule_id = 'Response ID'
 col_schedule_begin = 'Begin Time'
@@ -204,6 +207,7 @@ def generate_graph(nodes, edges):
         for edge_list in edge_lists:
             edge_list = sorted(edge_list, key=sort_func, reverse=False)
             for edge in edge_list:
+                u, v = edge
                 if u not in nodes and v not in nodes and u != v:
                     pairs.add(edge)
                     nodes.add(u)
@@ -234,11 +238,11 @@ def output_pairs(pairs):
     global output_df_download
     global pairs_download
 
-    df_class_output = df_classes[[col_class_begin, col_class_end, col_class_m, col_class_t, col_class_w, col_class_r, col_class_f, col_class_id, col_class_class_dept, col_class_num]]
+    df_class_output = df_classes[[col_class_beg12, col_class_end12, col_class_m, col_class_t, col_class_w, col_class_r, col_class_f, col_class_id, col_class_class_dept, col_class_num]]
 
     def df_apply(time):
         cls_str = time[8] + str(time[9]) + ' '
-        cls_str = cls_str + str(int(time[0])) + '-' + str(int(time[1])) + ' '
+        cls_str = cls_str + time[0] + '-' + time[1] + ' '
         for i in range(2, 7):
             if not pd.isna(time[i]):
                 cls_str = cls_str + time[i]
@@ -250,12 +254,14 @@ def output_pairs(pairs):
         df_classes[df_classes[col_class_id] == pair[0]][col_class_role].values[0],
         df_classes[df_classes[col_class_id] == pair[0]][col_class_email].values[0],
         [df_apply(time) for time in df_class_output[df_class_output[col_class_id] == pair[0]].values.tolist()],
+        df_classes[df_classes[col_class_id] == pair[0]][col_class_enrl].values[0],
 
         get_name(pair[1]),
         df_classes[df_classes[col_class_id] == pair[1]][col_class_class_dept].values[0],
         df_classes[df_classes[col_class_id] == pair[1]][col_class_role].values[0],
         df_classes[df_classes[col_class_id] == pair[1]][col_class_email].values[0],
         [df_apply(time) for time in df_class_output[df_class_output[col_class_id] == pair[1]].values.tolist()],
+        df_classes[df_classes[col_class_id] == pair[1]][col_class_enrl].values[0],
     ) for pair in pairs]
         
     pairs_download = pairs
@@ -274,12 +280,13 @@ def output_pairs(pairs):
             df_classes[df_classes[col_class_id] == inst][col_class_role].values[0], 
             df_classes[df_classes[col_class_id] == inst][col_class_email].values[0],
             [df_apply(time) for time in df_class_output[df_class_output[col_class_id] == pair[1]].values.tolist()], 
-            "Unpaired", 0, 0, 0, 0))
+            df_classes[df_classes[col_class_id] == inst][col_class_enrl].values[0],
+            "Unpaired", None, None, None, None, None))
     else:
         text_var = "Unpaired Instructors: None"
     lbl_print["text"] = text_var
 
-    output_df_download = pd.DataFrame(data, columns=['inst1_name', 'inst1_dep', 'inst1_job', 'inst1_email', 'inst1_class', 'inst2_name', 'inst2_dep', 'inst2_job', 'inst2_email', 'inst2_class'], )
+    output_df_download = pd.DataFrame(data, columns=['inst1_name', 'inst1_dep', 'inst1_job', 'inst1_email', 'inst1_class', 'inst1_enroll', 'inst2_name', 'inst2_dep', 'inst2_job', 'inst2_email', 'inst2_class', 'inst2_enroll'], )
 
 
 
