@@ -212,7 +212,6 @@ def generate_graph(nodes, edges):
                     pairs.add(edge)
                     nodes.add(u)
                     nodes.add(v)
-            print(pairs)
 
     except Exception as e:
         lbl_print["text"] = "Error with matching process: {}".format(e)
@@ -279,7 +278,7 @@ def output_pairs(pairs):
             df_classes[df_classes[col_class_id] == inst][col_class_class_dept].values[0], 
             df_classes[df_classes[col_class_id] == inst][col_class_role].values[0], 
             df_classes[df_classes[col_class_id] == inst][col_class_email].values[0],
-            [df_apply(time) for time in df_class_output[df_class_output[col_class_id] == pair[1]].values.tolist()], 
+            [df_apply(time) for time in df_class_output[df_class_output[col_class_id] == inst].values.tolist()], 
             df_classes[df_classes[col_class_id] == inst][col_class_enrl].values[0],
             "Unpaired", None, None, None, None, None))
     else:

@@ -1,4 +1,4 @@
-Takes in 2-3 excel files and outputs a pairing of faculty members based on their available times.
+application.py takes in 2-3 excel files and outputs a pairing of faculty members based on their available times.
 
 Usage:
 python3 application.py
@@ -36,3 +36,8 @@ Faculty Scheduling File (extra availability info about faculty):
     Friday
     Begin Time
     End Time
+
+generate_test_data.py generates a class file and nonavailability file for a set of fake instructors.
+
+Usage: 
+python3 generate_test_data.py number_of_instructors average_number_of_nonavailabilites
