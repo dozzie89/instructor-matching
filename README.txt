@@ -1,7 +1,14 @@
-match.py takes in 2 excel files and outputs a pairing of faculty members based on their available times.
+This application takes in 2 excel files (more information listed below) and outputs a pairing of faculty members based on their available times.
+
+
 
 Usage:
+If you are on mac and would like a simple exe, download match-macosx and run it.
+If you are on windows, download match-windows and run it.
+Otherwise, you will have to download match.py or clone this repo and run the script manually.
 python3 match.py
+
+
 
 The first file is a course scheduling file. It contains a list of every included instructor's preferred class or classes, along with relevant information for those classes.
 Course Scheduling File:

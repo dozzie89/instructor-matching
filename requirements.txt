@@ -2,10 +2,7 @@ numpy
 pandas
 networkx
 openpyxl
+tkinter
 
-tkinter.filedialog.askopenfilename
-tkinter.filedialog.asksaveasfile
-tkinter.Tk
-tkinter.ttk
-tkinter.StringVar
-tkinter.Toplevel
+#for generate_test_data.py
+faker
