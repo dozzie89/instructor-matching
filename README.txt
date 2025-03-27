@@ -1,13 +1,10 @@
-match.py takes in 2-3 excel files and outputs a pairing of faculty members based on their available times.
+match.py takes in 2 excel files and outputs a pairing of faculty members based on their available times.
 
 Usage:
 python3 match.py
 
-
-
-Necessary columns:
-
-Course Scheduling File (list of instructors' preferred classes):
+The first file is a course scheduling file. It contains a list of every included instructor's preferred class or classes, along with relevant information for those classes.
+Course Scheduling File:
     Column Name         | Requirements
     --------------------|---------------------
     Response ID         | e.g. '123456789', must be consistent with the Response ID column in the other file
@@ -28,6 +25,7 @@ Course Scheduling File (list of instructors' preferred classes):
     Course_Begin Time   | e.g. '1:00 PM'
     Course_End Time     | e.g. '2:00 PM'
 
+The second file is a faculty nonavailability file. It contains a list of all "nonavailabilities," or times during the week instructors are unavailable outside of class.
 Faculty Nonavailability File (extra availability info about faculty):
     Column Name         | Requirements
     --------------------|---------------------
