@@ -1,12 +1,9 @@
-from tkinter import *
+from tkinter import Tk, StringVar, Toplevel
 from tkinter import ttk
 from tkinter.filedialog import askopenfilename, asksaveasfile
 
 import pandas as pd
 import networkx as nx
-
-#TODO: re-match professors in bad pairs
-#TODO: only check first 75 minutes
 
 #extracted columns from class file
 col_class_id = 'Response ID'
@@ -50,6 +47,7 @@ output_df_download = pd.DataFrame()
 pairs_download = None
 
 
+import random
 
 def get_file_classes():
     #read in class file, perform data filtering
@@ -63,10 +61,12 @@ def get_file_classes():
         df_classes = df_classes[pd.notnull(df_classes[col_class_begin])]
         df_classes = df_classes[pd.notnull(df_classes[col_class_end])]
 
-        instructors = set(df_classes[col_class_id].sort_values().unique())
+        temp = df_classes[col_class_id].sort_values().unique()
+        random.shuffle(temp)
+
+        instructors = set(temp)
     except Exception as e:
         raise(e)
-    #lbl_print["text"] = f"{file_name} loaded successfully."
     lbl_print["text"] = "Class file loaded successfully."
 
 
@@ -79,7 +79,6 @@ def get_file_scheduling():
         df_scheduling = pd.read_excel(file_name)
     except Exception as e:
         raise(e)
-    #lbl_print["text"] = f"{file_name} loaded successfully."
     lbl_print["text"] = "Scheduling file loaded successfully."
     
 
@@ -98,7 +97,11 @@ def get_timeline(instructor, conf):
         for i in range(2, 7):
             s = class_time[i]
             if not pd.isnull(s):
-                all_classes.add((class_time[0] + (2400 * (i - 2)), class_time[1] + (2400 * (i - 2))))
+                start = class_time[0] + (2400 * (i - 2))
+                end = class_time[1] + (2400 * (i - 2))
+                if (end - start) > 115:
+                    end = start + 115
+                all_classes.add((start, end))
     return all_classes
 
 
@@ -114,8 +117,7 @@ def generate_edges():
     #convert instructors, classes to edges in a graph by comparing classes with conflicts
     for instruct_outer in instructors:
         if instruct_outer in inst_set: continue
-        #lbl_print["text"] = "Generating...{:.2f}%".format(100 * len(inst_set) / len(instructors))
-        lbl_print["text"] = "Loading...number of possible matches generated: {:.2f}".format(len(edges))
+        lbl_print["text"] = f"Loading...number of possible matches generated: {len(edges)}. Maximum possible matches: {len(df_classes) ** 2}."
         root.update()
 
         outer_timeline = get_timeline(instruct_outer, False)
@@ -124,9 +126,9 @@ def generate_edges():
             if instruct_inner in inst_set or ((instruct_outer, instruct_inner) in inst_bad) or ((instruct_inner, instruct_outer) in inst_bad): continue
             inner_timeline = get_timeline(instruct_inner, True)
 
-            c_add = True
 
             for o_class in outer_timeline:
+                c_add = True
                 for i_conflict in inner_timeline:
                     if not (i_conflict[0] >= o_class[1] or i_conflict[1] <= o_class[0]):
                         c_add = False
@@ -134,7 +136,6 @@ def generate_edges():
                 
                 if c_add: 
                     edges.add((instruct_inner, instruct_outer))
-                    break
 
     lbl_print["text"] = "Successfully generated edges."
     return edges
@@ -147,16 +148,11 @@ def generate_graph(nodes, edges):
         D.add_edges_from(edges)
 
         G = D.to_undirected(reciprocal=True)
-        #if(input("Would you like a drawing of all possible pairings of these instructors? (y/n). ").lower() == 'y'):
-            #nx.draw(G)
-            #plt.savefig('output.png')
-            #print("Successfully saved graph to output.png.")
     except Exception as e:
         lbl_print["text"] = "Error with graph process: {}".format(e)
         raise e
 
     try:
-        #pairs = nx.maximal_matching(G)
         #outline taken from networkx maximal_matching function
 
         pairs = set()
@@ -179,8 +175,8 @@ def generate_graph(nodes, edges):
             v_size = df_classes[df_classes[col_class_id] == v][col_class_enrl].values[0]
 
             return u_size == v_size
-            #return true if same class size
-            #return false otherwise
+            #returns true if same class size
+            #returns false otherwise
 
         edge_lists = [[], [], [], []]
         #0 = diff dep, same size
@@ -200,9 +196,16 @@ def generate_graph(nodes, edges):
                 edge_lists[3].append(edge)
         
         def sort_func(edge):
-            degree1 = G.degree(edge[0])
-            degree2 = G.degree(edge[1])
-            return degree1 + degree2
+            u,v = edge
+            if (u not in G.nodes) or (v not in G.nodes):
+                return 100000000
+            degree1 = G.degree[u]
+            degree2 = G.degree[v]
+            #print(get_name(u), get_name(v), degree1, degree2)
+            if (degree1 == 1) or (degree2 == 1):
+                return 1
+            return (degree1 + degree2)
+
 
         for edge_list in edge_lists:
             edge_list = sorted(edge_list, key=sort_func, reverse=False)
@@ -213,13 +216,28 @@ def generate_graph(nodes, edges):
                     nodes.add(u)
                     nodes.add(v)
 
+        test_pairs = set()
+        test_nodes = set()
+        if (len(pairs) * 2) < (len(instructors) - 1):
+            edge_list = sorted(G.edges, key=sort_func, reverse=False)
+            for edge in edge_list:
+                u, v = edge
+                if u not in test_nodes and v not in test_nodes and u != v:
+                    test_pairs.add(edge)
+                    test_nodes.add(u)
+                    test_nodes.add(v)
+                    G.remove_node(u)
+                    G.remove_node(v)
+                    edge_list = sorted(edge_list, key=sort_func, reverse=False)
+            print(len(pairs) * 2)
+            if (len(test_pairs) * 2) >= (len(instructors) - 1):
+                pairs = test_pairs
+                nodes = test_nodes
+
+
     except Exception as e:
         lbl_print["text"] = "Error with matching process: {}".format(e)
         raise e
-
-    #TODO: reimplement correctly if needed
-    #for (inst1, inst2) in inst_good:
-    #    pairs.add((float(inst1), float(inst2)))
 
     lbl_print["text"] = "Successfully created pairs."
     return pairs
@@ -342,8 +360,6 @@ def download():
     if output_df_download.empty:
         lbl_print['text'] = "Generate pairs first!"
         return
-    #output_df.to_excel('output.xlsx', sheet_name='sheet1', index=False)
-    #output_df.to_csv('output.csv', index=False)
     try:
         file = asksaveasfile(defaultextension='.xlsx', filetypes=[("Excel files", '*.xlsx')])
         output_df_download.to_excel(file.name, sheet_name='sheet1', index=False)
@@ -420,22 +436,22 @@ lbl_print.pack(expand=True)
 upload_frame = ttk.Frame(root)
 upload_frame.pack()
 
-ttk.Button(upload_frame, text="Select Class File", command=get_file_classes).pack(fill='x', side='left')
-ttk.Button(upload_frame, text="Select Scheduling File", command=get_file_scheduling).pack(fill='x', side='left')
+ttk.Button(upload_frame, text="Select Course Scheduling File", command=get_file_classes).pack(fill='x', side='left')
+ttk.Button(upload_frame, text="Select Faculty Nonavailability File", command=get_file_scheduling).pack(fill='x', side='left')
 
-ttk.Separator(root, orient=VERTICAL).pack(fill='x', expand=True)
+ttk.Separator(root, orient='vertical').pack(fill='x', expand=True)
 
 input_frame = ttk.Frame(root)
 input_frame.pack()
 
-ttk.Button(input_frame, text="Select Information", command=dep_manager).pack(fill='x', side='left')
+ttk.Button(input_frame, text="Select Included Departments", command=dep_manager).pack(fill='x', side='left')
 
 ttk.Button(input_frame, text="Generate/Download Pairs", command=download_manager).pack(side='left')
 #ttk.Button(pairs_frame, text="Generate Pairs", command=go_func).pack(fill='x', side='left')
 #ttk.Button(input_frame, text="Download Pairs", command=download).pack(side='left')
 #ttk.Button(pairs_frame, text="Download Department", command=download_dep).pack(side='left')
 
-ttk.Separator(root, orient=VERTICAL).pack(fill='x', expand=True)
+ttk.Separator(root, orient='vertical').pack(fill='x', expand=True)
 
 ttk.Button(text="Quit", command=root.destroy).pack(fill='x')
 

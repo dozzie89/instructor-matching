@@ -2,3 +2,10 @@ numpy
 pandas
 networkx
 openpyxl
+
+tkinter.filedialog.askopenfilename
+tkinter.filedialog.asksaveasfile
+tkinter.Tk
+tkinter.ttk
+tkinter.StringVar
+tkinter.Toplevel
