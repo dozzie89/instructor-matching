@@ -1,11 +1,9 @@
 This application takes in 2 excel files (more information listed below) and outputs a pairing of faculty members based on their available times.
 
 
-
 Usage:
-If you are on mac and would like a simple exe, download match-macosx and run it.
-If you are on windows, download match-windows and run it.
-Otherwise, you will have to download match.py or clone this repo and run the script manually.
+If you would like a simple exe (mac only for now - sorry!), download match-macosx and run it.
+Otherwise, you will have to download match.py or clone the repo and run the script manually.
 python3 match.py
 
 

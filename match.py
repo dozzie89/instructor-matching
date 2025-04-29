@@ -21,7 +21,6 @@ col_class_email = 'Email'
 col_class_name = 'Name'
 col_class_class_dept = 'Course_Dept'
 col_class_num = 'Course_Number'
-
 col_class_beg12 = 'Course_Begin Time'
 col_class_end12 = 'Course_End Time'
 
@@ -84,7 +83,7 @@ def get_file_scheduling():
 
 
 def get_timeline(instructor, conf):
-    #convert instructor's availabilities into a list of times for graph matching
+    #convert instructor's nonavailabilities into a list of times for graph matching
     global df_classes
     global df_scheduling
     all_classes = set()
@@ -142,6 +141,7 @@ def generate_edges():
 
 
 def generate_graph(nodes, edges):
+    # convert generated nodes/edges into a networkx digraph for matching algorithm
     try:
         D = nx.DiGraph()
         D.add_nodes_from(nodes)
@@ -201,12 +201,11 @@ def generate_graph(nodes, edges):
                 return 100000000
             degree1 = G.degree[u]
             degree2 = G.degree[v]
-            #print(get_name(u), get_name(v), degree1, degree2)
             if (degree1 == 1) or (degree2 == 1):
                 return 1
             return (degree1 + degree2)
 
-
+        #prioritize instructors in different departments, then instructors with matching class sizes
         for edge_list in edge_lists:
             edge_list = sorted(edge_list, key=sort_func, reverse=False)
             for edge in edge_list:
@@ -249,7 +248,7 @@ def get_name(id):
     return (df_classes[df_classes[col_class_id] == id][col_class_name].values[0])
 
 
-
+# convert generated pairs to a pandas dataframe with relevant information (including unmatched instructors)
 def output_pairs(pairs):
     global df_classes
     global output_df_download
@@ -316,7 +315,7 @@ def go_func():
     output_pairs(pairs)
 
 
-
+# tkinter department menu helper function
 def dep_manager():
     if not check_func(): return
 
@@ -353,7 +352,7 @@ def dep_manager():
     ttk.Button(master=t, text="Submit", command=dep_manager_helper).pack(side='right')
 
 
-
+#tkinter download menu helper function
 def download():
     global output_df_download
 
@@ -368,43 +367,7 @@ def download():
         raise e
 
 
-def download_dep():
-    global output_df_download
-
-    if output_df_download.empty:
-        lbl_print['text'] = "Generate pairs first!"
-        return
-    
-    t = Toplevel(root)
-    helper_label = ttk.Label(master=t, text="Which department would you like to download?")
-    helper_label.pack()
-
-    dep = StringVar()
-    radios = set()
-
-    for department in df_classes[col_class_class_dept].sort_values().unique():
-        radio = ttk.Radiobutton(t, text=department, variable=dep, value=department)
-        radios.add(radio)
-        radio.pack()
-
-    def download_dep_helper():
-        global output_df_download
-        new_download = output_df_download[(output_df_download['inst1_dep'] == dep.get()) | (output_df_download['inst2_dep'] == dep.get())]
-        
-        try:
-            file = asksaveasfile(defaultextension='.xlsx', filetypes=[("Excel files", '*.xlsx')])
-            new_download.to_excel(file.name, sheet_name='sheet1', index=False)
-            lbl_print['text'] = "Successfully downloaded file."
-        except Exception as e:
-            raise e
-
-        t.destroy()
-
-    ttk.Button(master=t, text="Back", command=t.destroy).pack(side='left')
-    ttk.Button(master=t, text="Download", command=download_dep_helper).pack(side='right')
-
-
-
+#only allow the user to download pairs if correct files have been submitted
 def check_func():
     global df_classes
     global df_scheduling
@@ -419,13 +382,13 @@ def check_func():
     
     return True
 
+
 def download_manager():
     go_func()
     download()
-    #TODO: generate pairs, download pairs (select departments)
 
 
-
+#tkinter setup
 root = Tk()
 root.resizable(width=False, height=False)
 root.title("Faculty Pairing")
@@ -447,12 +410,11 @@ input_frame.pack()
 ttk.Button(input_frame, text="Select Included Departments", command=dep_manager).pack(fill='x', side='left')
 
 ttk.Button(input_frame, text="Generate/Download Pairs", command=download_manager).pack(side='left')
-#ttk.Button(pairs_frame, text="Generate Pairs", command=go_func).pack(fill='x', side='left')
-#ttk.Button(input_frame, text="Download Pairs", command=download).pack(side='left')
-#ttk.Button(pairs_frame, text="Download Department", command=download_dep).pack(side='left')
 
 ttk.Separator(root, orient='vertical').pack(fill='x', expand=True)
 
 ttk.Button(text="Quit", command=root.destroy).pack(fill='x')
+
+print("testing")
 
 root.mainloop()
