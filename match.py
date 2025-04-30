@@ -415,6 +415,4 @@ ttk.Separator(root, orient='vertical').pack(fill='x', expand=True)
 
 ttk.Button(text="Quit", command=root.destroy).pack(fill='x')
 
-print("testing")
-
 root.mainloop()
