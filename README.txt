@@ -3,8 +3,14 @@ This application takes in 2 excel files (more information listed below) and outp
 
 Usage:
 If you would like a simple exe (mac only for now - sorry!), download match-macosx and run it.
-Otherwise, you will have to download match.py or clone the repo and run the script manually.
-python3 match.py
+
+Steps:
+1. Download match-macosx, put it in a folder on your desktop
+2. Open terminal (look up command prompt on mac)
+3. Type the command "cd Desktop/{your_folder}" (without the brackets)
+    - Note: if you'd rather leave the file in your downloads folder, you can. Just type "cd Downloads/" instead
+4. Type the command "chmod +x ./match-macosx"
+5. Run the exe by double clicking it in the folder, or run the command "./match-macosx"
 
 
 
